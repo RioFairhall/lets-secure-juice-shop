@@ -1,0 +1,41 @@
+name: Notify Snyk Scan
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  snyk:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Notify Slack that scan will start
+      run: |
+        TEXT="✅ *Snyk Scan will start after installing dependencies* for \`${{ github.repository }}\` on branch \`${{ github.ref_name }}\`."
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"$TEXT\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+          
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run Snyk Test and Save JSON
+      run: snyk test --all-projects --json > snyk-results.json
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+    - name: Notify Slack that scan was completed
+      run: |
+        TEXT="✅ *Snyk Scan Completed* for \`${{ github.repository }}\` on branch \`${{ github.ref_name }}\`."
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"$TEXT\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
